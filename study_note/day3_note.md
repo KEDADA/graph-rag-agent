@@ -194,9 +194,11 @@ def __init__(self, cache_dir="./cache"):
 
 | | `self.llm` | `self.stream_llm` |
 |---|---|---|
-| 用途 | 决策（要不要调工具）+ 生成回答 | 前端流式展示 |
-| 调用方式 | `.invoke()` 整体返回 | `.astream()` 逐 token 返回 |
+| 用途 | 决策（要不要调用工具）+ 生成回答 + 伪流式输出 | 前端流式展示 ❌ **未被使用（死代码）** ❗❗ 见 QA-13 |
+| 调用方式 | `.invoke()` 整体返回 | `.astream()` 逐 token 返回（创建了但从未调用） |
+| 说明 | 项目唯一实际使用的 LLM | 可能是原作者预留的真流式方案，最终未实施 |
 | 为什么分开 | `bind_tools()` 要求 LLM 返回完整的 JSON（tool\_calls），流式模式下 JSON 逐字返回时会解析失败 |
+
 
 ### 2.3 `_setup_graph`：画流程图（最关键的 30 行代码）
 
@@ -551,11 +553,11 @@ START → agent → retrieve ─┬─ local搜索 → generate → END
 | | 会话缓存 | 全局缓存 |
 |---|---|---|
 | 作用域 | 同一对话内（`thread_id` 隔离） | 所有用户共享 |
-| 键生成 | `thread_id + query + keywords` 三者联合哈希 | 仅 `query` 的 MD5 |
-| 解决问题 | 同一对话中的追问和反复确认 | 不同用户问的高频相同问题 |
-| 内存/磁盘 | 200条/2000条 | 500条/5000条 |
+| 键生成 | `thread_id + context + version + query` 联合哈希 ❗❗ 见 QA-12-1、QA-12-5 | 仅 `query` 的 MD5 ❗❗ 见 QA-12-1 |
+| 解决问题 | 同一对话中的追问（**主要靠向量语义匹配**，精确哈希几乎无法命中） | 不同用户问的高频相同问题 |
+| 内存/磁盘 | 200条/2000条 | 500条/5000条 ❗❗ 见 QA-12-2 |
 
-### 5.3 查询时的缓存检查顺序
+### 5.3 查询时的缓存检查顺序  ❗❗ 为什么这个顺序？见 QA-12-3、QA-12-4
 
 ```python
 def _check_all_caches(self, query, thread_id):
@@ -643,7 +645,7 @@ for sentence in sentences:
 - `threshold = 40`（普通 Agent）：推送频繁，像打字机
 - `threshold = 80`（DeepResearch）：推送较慢但每次内容更完整
 
-### 6.3 三种调用方式对比  ❗❗ 详解见 day3_note_QA.md → QA-9
+### 6.3 三种调用方式对比  ❗❗ 三个 API 方法的具体实现对比见 day3_note_QA.md → QA-9
 
 | 方法 | 返回值 | 适用场景 |
 |------|--------|---------|
