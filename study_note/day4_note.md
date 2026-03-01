@@ -279,7 +279,7 @@ WITH collect {
 } AS text_mapping,
 
 -- ② 找到实体所属的社区摘要
--- 💡 关于 community_rank、社区 weight、关系 weight 的详细解释，请看 [Day 4 QA](day4_note_QA.md#q1社区等级community_rank社区权重weight以及关系权重weight分别是什么怎么定义的)
+-- 👉 **[QA指路] 关于 community_rank、社区权重与关系权重的详细解释，请看 `day4_note_QA.md` 的 QA-1**
 collect {
     UNWIND nodes as n
     MATCH (n)-[:IN_COMMUNITY]->(c:__Community__)
@@ -369,7 +369,7 @@ docs = vector_store.similarity_search(query, k=10)
 ### 3.5 工具封装层做了什么额外的事
 
 `LocalSearchTool`（tool 层）在核心搜索之上增加了：
-> 💡关于这里的历史感知检索是如何改写问题、完整 RAG 链是怎么把图谱数据和 LLM 生成串联起来的详细代码级解析，请看 [Day 4 QA](day4_note_QA.md#q2localsearchtool工具层在-localsearch核心层之上具体增加了什么代码里是怎么实现的)
+> 👉 **[架构封装拆解] 关于历史感知检索的改写机制、RAG 链串联数据的代码级解析，请看 `day4_note_QA.md` 的 QA-2**
 
 ```python
 class LocalSearchTool(BaseSearchTool):
@@ -437,6 +437,7 @@ def _setup_chains(self):
     
     # 4. 关键词提取链 (用于 extract_keywords 方法)
     self.keyword_chain = self.keyword_prompt | self.llm | StrOutputParser()
+    # 👉 **[API成本追问] 这里的历史感知检索是每次都会无脑调用 LLM 消耗 API 吗？详见 `day4_note_QA.md` QA-3。**
 ```
 **一句话总结**：把底层的纯图谱查询，升级为了一个**懂上下文对话**的问答引擎。
 
@@ -745,7 +746,7 @@ def structured_search(self, query_input: Any) -> Dict[str, Any]:
     return structured_result
 ```
 
-> 💡 **关于这里的 `retrieval_payload` 证据数据结构和 `structured_result` 字典长什么样、分别有什么用，请参见**：[Day 4 QA](day4_note_QA.md#q4-globalsearch-中-retrieval_payload-和-structured_result-的区别是什么具体长什么样)
+> 👉 **[数据契约追问] 关于 `retrieval_payload` 证据数据结构和 `structured_result` 字典长什么样、分别有什么用，请参见 `day4_note_QA.md` 的 QA-4**
 
 **这个流程的含金量**：这是经典的分布式系统 Map-Reduce 思想在大模型重构知识领域的完美映射！展现了非常优秀的性能调优意识，完美串起了本大节 4.1-4.4 中的所有理论概念！
 
@@ -939,7 +940,7 @@ def thinking(self, query):
     return {"thinking_process": think, "answer": final_answer, ...}
 ```
 
-> 💡 **关于这套精妙的主循环中，为什么首轮搜索要加上 `[:2]` 切片限制、信息“缺口”的真实含义，以及 `thinking_process` 日记是怎么积攒出来的，代码级详解请看**：[Day 4 QA](day4_note_QA.md#q5-deep-research-中-thinking-主循环的关键疑问解析)
+> 👉 **[主循环精妙设计] 为什么首轮搜索要加上 `[:2]` 取样、信息“缺口”是什么、`thinking_process` 日记是怎么积攒出来的？代码级详解请看 `day4_note_QA.md` 的 QA-5**
 
 ### 6.4 子模块1： QueryGenerator（查询生成器）
 
@@ -1033,7 +1034,7 @@ def search(self, query: str) -> Dict:
     else:                        return self._merge_results(precise_results, kb_results)
 ```
 
-> 💡 **为什么要在路径 1 强行剥离知识库名字，又在路径 2 强行拼上名字？结合真实项目的硬核防呆策略解析请看**：[Day 4 QA](day4_note_QA.md#q6-dualpathsearcher-中针对-kb_name-知识库名称-拼装与剥离的作用是什么)
+> 👉 **[防呆策略追问] 为什么要在路径 1 强行剥离知识库名称，又在路径 2 强行拼上名称？结合真实项目的硬核解析请看 `day4_note_QA.md` 的 QA-6**
 
 **为什么需要两种路径？** 向量检索对查询的措词非常敏感——"旷课处理"和"华东理工大学旷课处理"在向量空间中可能距离不同。加上知识库名称可能让检索更精准，也可能引入噪音。让 LLM 来判断哪个更好，是一种自适应的应对策略。
 

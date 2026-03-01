@@ -46,6 +46,18 @@
 - **优化建议**：
   - **执行保守回退（Fail-Safe）**：将异常捕获块中的回退处理改为 `return None`（不代表任何实体）。并在外围的 `align_all` 中做兜底判断：一旦捕获到仲裁失败，系统应立刻中止当前分组的合并操作并抛出或打印 Warning 日志。对于含有冲突又不确定的数据，图谱构建的最佳实践应当是保持原始面貌（不合并），避免错误污染整个社区。
 
+### 1-7. `ConsistencyChecker` 仅检测不修复的“半残”设计
+- **来源**：[Day 6 笔记](day6_note.md#44-step-3-consistencychecker一致性校验器) / QA-13
+- **描述**：在 Report 阶段的最后，`ConsistencyChecker` 负责审核生成的长文报告，检测出引用错误（如捏造 evidence ID）或事实矛盾（如金额不一致）。然而，当前版本的实现中，它仅仅是向输出中附带一个包含了 `issues`（问题清单）和 `corrections`（修改建议）的 JSON，**实际上并没有任何机制去阻断错误报告的输出，也没有将这些修改建议回传给 `SectionWriter` 触发自动修复（Self-Correction）**。这使得最后的这一道防线形同虚设，用户的最终报告里依然可能带着未修正的错觉。
+- **优化建议**：
+  - **接入 Reflection 闭环重试机制**：应在 `ConsistencyChecker` 核查出 `is_consistent=False` 时，把其生成的 `corrections` 建议作为修正 Prompt，**打回给负责该段落的 `SectionWriter` 进行第二轮（Pass 2）重写**。就像 `ReflectionExecutor` 的机制一样，设定 `MAX_RETRIES` 次数。只有当校验结果为 True，或者达到最大重试次数时，才允许拼接最终文档并输出。这才能实现真正的长文本全自动质量控制。
+
+### 1-8. Agent 类型切换导致的历史记忆强制隔离（缺乏平滑降级）
+- **来源**：[Day 8 笔记](day8_note.md#31-为什么需要-agentmanager硬核原理解析) / QA-13
+- **描述**：当前架构下，`AgentManager` 通过 `instance_key = f"{agent_type}:{session_id}"` 来分配实例对象。这意味着同一个用户在同一个会话中，如果在下拉框从 `NaiveRAGAgent` 切换到 `FusionAgent`，底层会实例化一个全新的 `MemorySaver` 和 `StateGraph`，导致前置对话历史完全清空（并行宇宙物理隔离）。这违背了用户“先简单问快查，后复杂问深挖”的连贯性直觉。之所以如此设计，是因为不同 Agent 的内部状态（如 `GraphAgent` 的节点状态流转、打分记录）数据结构极度不兼容，互相强行读取会引发 Schema Mismatch 或大模型注意力被内部日志污染。
+- **优化建议**：
+  - **引入全局路由（Router Agent / Gateway）**：如果要做完美的“智多星助理”，应该取消让用户手动下发选择 Agent 模型的设定，在系统最上层加一层状态统一的网关 Agent。由网关唯一维护全局核心的 `MemorySaver`（只干净地记录 Human 提问和最终 AI 的回答，滤除底层工具调用日志）。每次发请求，网关根据问题难度动态路由（Dynamic Routing）派发给底层的 `NaiveRAG` 或 `Fusion`，完成组装后再由网关统一把上下文串起来。
+
 ---
 
 ## 🚀 2. 性能与效率优化 (Performance & Efficiency Optimizations)
@@ -72,6 +84,26 @@
 - **描述**：项目在提取文档知识图谱时依赖了底层的 `textract` 库，而其在部分 Linux/WSL 系统上需要极为繁琐的系统底层级依赖（如 libxml2、poppler 等）。这给项目复现和跨平台部署带来了很大的环境污染问题。
 - **优化建议**：
   - 更换轻量级或主流的 Python 文档解析器接口，如使用 `PyMuPDF`、`pdfplumber` 或者直接对接 Unstructured API 服务，降低部署门槛。
+
+---
+
+## 📊 4. 工程化与测试评估 (Engineering & Evaluation)
+
+### 4-1. 缺乏测试驱动的量化评估体系 (TDD & Eval)
+- **来源**：[Day 9 笔记](day9_note.md) / 面试复盘 Q13
+- **描述**：当前项目在开发过程中，各个模块（如检索器 Top-K 次数、Agent 路由逻辑、图谱抽取准确率）的评估是全凭开发者直觉或事后抽查补充的。这种开发模式在重构（如调整 Prompt 或改变 Embedding 模型）时非常危险，因为缺乏量化的基准线（Baseline）来证明改动是正向的。
+- **优化建议**：
+  - **引入评估驱动开发（Eval-Driven Development）**：在编写核心 Agent 逻辑前，先建立包含 100-200 个黄金问答对（Golden Dataset）的测试集。接入如 Ragas、TruLens 或 LangSmith 等大模型评估框架，针对准确性（Answer Correctness）、上下文相关度（Context Relevance）和幻觉率（Faithfulness）进行每日打分，确保每次代码合并都有数据背书。
+
+---
+
+## 💰 5. 成本与经济性优化 (Cost Optimization)
+
+### 5-1. 知识图谱构建极度消耗大模型 Token（全量 LLM 抽取的昂贵代价）
+- **来源**：[Day 9 笔记](day9_note.md) / 面试复盘 Q13
+- **描述**：当前项目在**全量文本块**上直接使用昂贵的大模型（Claude/GPT-4）进行开放式关系抽取（OpenIE）。每一块文本都需要花费大量的输入输出 Token 来提取三元组，并且质量极不稳定（容易产生冗余或格式错乱）。在真实海量文档的企业级业务中，这种做法成本极高且速度奇慢。
+- **优化建议**：
+  - **混合抽取架构降级**：放弃“一上来就拿大刀砍”的方案。先用廉价且极速的传统 NLP 规则 + 领域微调的 NER（命名实体识别）/ RE（关系抽取）小模型（如 GLiNER/Uie）过一遍全量文本，完成 80% 基础结构化数据的粗排提取。最后只在关系模糊、有冲突或需要核心逻辑推理的 20% 复杂节点上调用大型 LLM 进行精修决策。这能让图谱构建成本断崖式下降 60% 以上。
 
 ---
 

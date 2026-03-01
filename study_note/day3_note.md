@@ -30,7 +30,7 @@ Day 2 我们把知识图谱建好了。但图谱只是"数据"——用户问了
 
 ## 一、LangGraph 入门：用状态图编排 AI 的思考过程
 
-> ❗❗ **延伸阅读**：LangGraph vs LangChain 的区别→见 day3_note_QA.md → QA-1
+> 👉 **[QA指路] LangGraph vs 普通 LangChain 的区别是什么？为什么选 LangGraph？详见 `day3_note_QA.md` 的 QA-1**
 
 ### 1.1 一句话理解 LangGraph
 
@@ -171,15 +171,15 @@ def __init__(self, cache_dir="./cache"):
     self.stream_llm = get_stream_llm_model()  # "打字机输出用"的 LLM
 
     # ② 安全限制
-    self.default_recursion_limit = 5  # ❗❗ 详解见 day3_note_QA.md → QA-7
+    self.default_recursion_limit = 5  # 👉 **[QA指路] recursion_limit 是干什么的？什么情况下 Agent 会进入死循环？详见 `day3_note_QA.md` 的 QA-7**
     #   ↑ LangGraph 状态图最多走几步（不是 LLM 调用次数！）
     #   正常 agent→retrieve→generate 只走 3 步
     #   设 5 是防止 agent→retrieve→agent→retrieve→... 的死循环
 
-    # ③ 对话记忆  ❗❗ 详解见 day3_note_QA.md → QA-10
+    # ③ 对话记忆 👉 **[QA指路] MemorySaver 到底是什么？详见 `day3_note_QA.md` 的 QA-10**
     self.memory = MemorySaver()
     #   ↑ LangGraph 的 checkpointer，按 thread_id 保存每个会话的消息历史
-    #   注意：仅内存存储，服务重启后丢失  ❗❗ 持久化方案见 day3_note_QA.md → QA-2
+    #   注意：仅内存存储，服务重启后丢失 👉 **[QA指路] MemorySaver 能持久化到数据库吗？当前的局限是什么？详见 `day3_note_QA.md` 的 QA-2**
 
     # ④ 两层缓存（后面 §四 详细讲）
     self.cache_manager = CacheManager(...)        # 会话级
@@ -190,11 +190,11 @@ def __init__(self, cache_dir="./cache"):
     self._setup_graph()                # 画流程图
 ```
 
-**为什么需要两个 LLM？** ❗❗ `bind_tools` **详解见 day3_note_QA.md → QA-11**
+**为什么需要两个 LLM？** 👉 **[QA指路] `bind_tools()` 到底在做什么？通俗理解详见 `day3_note_QA.md` 的 QA-11**
 
 | | `self.llm` | `self.stream_llm` |
 |---|---|---|
-| 用途 | 决策（要不要调用工具）+ 生成回答 + 伪流式输出 | 前端流式展示 ❌ **未被使用（死代码）** 💡 此问题已收录至 [项目优化清单](project_improvements.md#1-1-空置的-stream_llm-实例伪流式输出) |
+| 用途 | 决策（要不要调用工具）+ 生成回答 + 伪流式输出 | 前端流式展示 ❌ **未被使用（死代码）** 💡 此问题已收录至 [项目优化清单](project_improvements.md#1-1-空置的-stream_llm-实例伪流式输出)。👉 **[QA指路] `stream_llm` 到底有没有用到？`stream_flush_threshold` 呢？详见 `day3_note_QA.md` 的 QA-13** |
 | 调用方式 | `.invoke()` 整体返回 | `.astream()` 逐 token 返回（创建了但从未调用） |
 | 说明 | 项目唯一实际使用的 LLM | 可能是原作者预留的真流式方案，最终未实施 |
 | 为什么分开 | `bind_tools()` 要求 LLM 返回完整的 JSON（tool\_calls），流式模式下 JSON 逐字返回时会解析失败 |
@@ -295,7 +295,7 @@ def _agent_node(self, state):
     messages = state["messages"]
     # 此时 messages = [HumanMessage("旷课多少学时会被退学？")]
 
-    # 1) 提取关键词（子类实现） ❗❗ 为什么在这里提取？见 day3_note_QA.md → QA-8
+    # 1) 提取关键词（子类实现） 👉 **[QA指路] 为什么要在 `_agent_node` 里做关键词提取，而不是在调用工具前做？详见 `day3_note_QA.md` 的 QA-8**
     query = messages[-1].content
     keywords = self._extract_keywords(query)
     # → {"low_level": ["旷课", "学时", "退学"], "high_level": ["学籍管理"]}
@@ -307,7 +307,7 @@ def _agent_node(self, state):
     )
 
     # 3) 让 LLM 做决定：要不要调用搜索工具？
-    model = self.llm.bind_tools(self.tools)  # ❗❗ 详解见 day3_note_QA.md → QA-3 和 QA-11
+    model = self.llm.bind_tools(self.tools)  # 👉 **[QA指路] `bind_tools()` 到底做了什么？LLM 怎么知道要调用哪个工具？详见 `day3_note_QA.md` 的 QA-3 和 QA-11**
     #       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     #       bind_tools 的作用：
     #       把工具的"使用说明"注入 LLM 的 system prompt，例如：
@@ -399,7 +399,7 @@ def _grade_documents(self, state):
 ```python
 def _generate_node(self, state):
     messages = state["messages"]
-    question = messages[-3].content   # ❗❗ 为什么是 [-3]？见 day3_note_QA.md → QA-4
+    question = messages[-3].content   # 👉 **[QA指路] 为什么 `_generate_node` 通过 `messages[-3]` 获取问题？这样写有问题吗？详见 `day3_note_QA.md` 的 QA-4**
     docs = messages[-1].content       # → 搜索结果文本（第2条）
 
     # 构建 RAG Prompt
@@ -553,11 +553,11 @@ START → agent → retrieve ─┬─ local搜索 → generate → END
 | | 会话缓存 | 全局缓存 |
 |---|---|---|
 | 作用域 | 同一对话内（`thread_id` 隔离） | 所有用户共享 |
-| 键生成 | `thread_id + context + version + query` 联合哈希 ❗❗ 见 QA-12-1、QA-12-5 | 仅 `query` 的 MD5 ❗❗ 见 QA-12-1 |
+| 键生成 | `thread_id + context + version + query` 联合哈希 👉 **[QA指路] 见 `day3_note_QA.md` QA-12的Q12-1、Q12-5** | 仅 `query` 的 MD5 👉 **[QA指路] 见 `day3_note_QA.md` QA-12的Q12-1** |
 | 解决问题 | 同一对话中的追问（**主要靠向量语义匹配**，精确哈希几乎无法命中） | 不同用户问的高频相同问题 |
-| 内存/磁盘 | 200条/2000条 | 500条/5000条 ❗❗ 见 QA-12-2 |
+| 内存/磁盘 | 200条/2000条 | 500条/5000条 👉 **[QA指路] 见 `day3_note_QA.md` QA-12的Q12-2** |
 
-### 5.3 查询时的缓存检查顺序  ❗❗ 为什么这个顺序？见 QA-12-3、QA-12-4
+### 5.3 查询时的缓存检查顺序  👉 **[QA指路] 为什么这个顺序？先查全局可能错命中吗？详见 `day3_note_QA.md` QA-12的Q12-3、Q12-4**
 
 ```python
 def _check_all_caches(self, query, thread_id):
@@ -586,7 +586,7 @@ if answer and len(answer) > 10:    # 过滤太短的垃圾回答
     self.global_cache_manager.set(query, answer)                 # 写全局缓存
 ```
 
-### 5.5 语义缓存：改了措辞也能命中  ❗❗ 详解见 day3_note_QA.md → QA-5、QA-6
+### 5.5 语义缓存：改了措辞也能命中  👉 **[QA指路] 缓存的向量语义匹配具体怎么工作的？详见 `day3_note_QA.md` 的 QA-5 和 QA-6**
 
 普通缓存是精确匹配——"国家奖学金申请条件"和"怎么申请国家奖学金"会被当成两个不同问题。
 
@@ -645,7 +645,7 @@ for sentence in sentences:
 - `threshold = 40`（普通 Agent）：推送频繁，像打字机
 - `threshold = 80`（DeepResearch）：推送较慢但每次内容更完整
 
-### 6.3 三种调用方式对比  ❗❗ 三个 API 方法的具体实现对比见 day3_note_QA.md → QA-9
+### 6.3 三种调用方式对比  👉 **[QA指路] `ask`、`ask_stream`、`ask_with_trace` 这三个方法到底有什么区别？详见 `day3_note_QA.md` 的 QA-9**
 
 | 方法 | 返回值 | 适用场景 |
 |------|--------|---------|

@@ -1,6 +1,11 @@
 import asyncio
 import time
+import os
+import sys
 from datetime import datetime
+
+# 动态将项目根目录添加到系统路径中，确保能找到 graphrag_agent 模块
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from graphrag_agent.agents.deep_research_agent import DeepResearchAgent
 from graphrag_agent.agents.naive_rag_agent import NaiveRagAgent

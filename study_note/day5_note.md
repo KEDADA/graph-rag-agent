@@ -167,6 +167,8 @@ def vector_rerank(self, mention: str, candidates: List[Dict[str, Any]]):
 **面试追问**：为什么不用欧氏距离？
 → 余弦相似度只关注方向，不受向量长度影响，更适合语义相似度计算。
 
+👉 **[高阶追问] 面试官可能会问：“为什么组合打分用 `0.4*字符串 + 0.6*向量`，而不是各占50%？” 详见 `day5_note_QA.md` 里的 QA-3 权重设计原理。**
+
 ---
 
 #### 阶段3：NIL检测（第100-114行）
@@ -199,6 +201,8 @@ def nil_detection(self, mention: str, candidates: List[Dict[str, Any]]):
 **阈值设计**：
 - `DISAMBIG_NIL_THRESHOLD = 0.75`（可在`.env`配置）
 - 如果最佳候选分数 < 0.75 → 判定为NIL，让它自己成为一个新的规范实体，绝不强行与其他实体绑定，以此来避免**错误指认**（比如把“华为”和“华南”硬凑成一家）。
+
+👉 **[进阶提问] NIL检测阈值如何确定？设置不当会有什么后果？ 详见 `day5_note_QA.md` 的 QA-4。**
 
 ---
 
@@ -250,6 +254,8 @@ RETURN community, entity_info
 - **分页处理**：每次处理500个WCC分组，避免内存溢出
 - **度数优先**：度数高的实体更"中心"，更适合作为canonical
 - **增量标记**：处理完的实体标记`canonical_id IS NOT NULL`，下次查询自动跳过
+
+👉 **[串联问] 面试官：WCC分组去重和在线三步管道的具体协作方式是怎样的？ 详见 `day5_note_QA.md` QA-5。**
 
 ---
 
@@ -352,6 +358,8 @@ Jaccard = 1 / 4 = 0.25 < 0.5 → 存在冲突
 **为什么用Jaccard而不是余弦相似度？**
 → 关系类型是离散集合，不是连续向量，Jaccard更适合集合相似度计算。
 
+👉 **[技术盲点] Jaccard vs 余弦相似度的深度对比，看看 `day5_note_QA.md` 的 QA-7。**
+
 ---
 
 ### 2.4 冲突解决：LLM介入
@@ -449,6 +457,8 @@ DETACH DELETE old
 - **CALL子查询**：即使`old`没有边，子查询返回0，主流程继续执行`SET`和`DELETE`
 - **去重检测**：`WHERE NOT rel_props IN existing_props`，避免创建重复关系
 - **属性合并**：`COALESCE`保留非空值，`aligned_from`记录合并历史
+
+👉 **[高阶追问] 为什么转移图数据库的关系必须使用 CALL 子查询？ 参看 `day5_note_QA.md` 中 QA-9 解析。**
 
 ---
 
@@ -658,6 +668,8 @@ def save_communities(self) -> Dict[str, int]:
 - 细粒度（level=0）：回答具体问题，如"国家奖学金的申请条件"
 - 粗粒度（level=2）：回答宏观问题，如"学生资助体系的整体结构"
 
+👉 **[多粒度考点] 层次化对于路由提问有多重要？ 详见 `day5_note_QA.md` 的 QA-13。**
+
 ---
 
 ### 3.4 SLLPA算法（回退方案）
@@ -866,6 +878,8 @@ ChunkIndexBuilder().build()
 - 对齐依赖消歧的canonical_id
 - 社区检测依赖对齐后的干净图谱
 - 索引构建依赖社区结构
+
+👉 **[架构灵魂追问] 如果我先做社区检测，再做实体消歧可以吗？ 参阅 `day5_note_QA.md` 的 QA-16 标准解释。**
 
 ---
 

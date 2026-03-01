@@ -155,7 +155,7 @@ chunk 数 ≥ 100 时并行构建，避免逐一写 Neo4j 导致大文件处理�
 
 `ChineseTextChunker` 是专门针对中文的分块器，基于 **HanLP** 分词。
 
-> 📖 **延伸阅读**：CHUNK_SIZE 过大为什么漏实体？分词器到底在做什么？→ `day2_note_QA.md` **QA-4**、**QA-5**、**QA-6**
+> 👉 **[QA指路] CHUNK_SIZE 过大为什么漏实体？超长文本处理是为了什么？分词器到底在做什么？请看 `day2_note_QA.md` 的 QA-4、QA-5、QA-6**
 
 ### 分块策略：滑动窗口 + 句子边界对齐
 
@@ -215,7 +215,7 @@ else:
 
 ### 3.3 Neo4j 图结构（步骤 1 构建结果）
 
-> 📖 **延伸阅读**：Neo4j 图结构的详细解析（节点属性、关系方向、Cypher 查询示例）→ `day2_note_QA.md` **QA-2**
+> 👉 **[QA指路] 关于 Neo4j 图结构的详细解析（节点属性、关系方向、Cypher 查询示例），请看 `day2_note_QA.md` 的 QA-2**
 
 构建完成后 Neo4j 中的节点类型：
 
@@ -251,7 +251,7 @@ Entity（实体节点，含向量）
 
 ### 3.5 性能调参（面试加分项）
 
-> 📖 **延伸阅读**：并行 vs 批处理的实现原理、性能调参的面试话术 → `day2_note_QA.md` **QA-1**、**QA-3**
+> 👉 **[QA指路] 并行 vs 批处理的实现原理是什么？性能调参的面试话术该怎么说？请看 `day2_note_QA.md` 的 QA-1、QA-3**
 
 | `.env` 参数 | 作用 | 调大影响 |
 |-------------|------|---------|
@@ -308,7 +308,7 @@ OPTIONS {indexConfig: {`vector.dimensions`: 1536, `vector.similarityFunction`: '
 > 核心问题：不同 Chunk 中对同一事物可能有不同称呼，需要识别出来。
 > 例如："国家奖学金"和"国奖"、"学业绩点"和"GPA"、"学生处"和"学工部"
 
-> 📖 **延伸阅读**：为什么定义了 entity_types 还会有重复实体？→ `day2_note_QA.md` **QA-7**
+> 👉 **[QA指路] 为什么定义了 entity_types 还会有重复实体？请看 `day2_note_QA.md` 的 QA-7**
 
 #### 什么是 GDS（Graph Data Science）
 
@@ -557,7 +557,7 @@ apoc.refactor.mergeNodes()（批量执行）
 
 ### 4.4 实体消歧与对齐（`entity_quality.py`）
 
-> 📖 **延伸阅读**：4.3 合并完了为什么 WCC 组里还有多个实体？→ `day2_note_QA.md` **QA-8**
+> 👉 **[QA指路] 4.3 合并完了为什么 WCC 组里还有多个实体？请看 `day2_note_QA.md` 的 QA-8**
 
 消歧和对齐是 4.3 合并之后的**进一步质量提升**，由 `EntityQualityProcessor` 顺序执行两个阶段。
 
@@ -610,7 +610,7 @@ WCC 分组 {wcc=1}：["学生处"(度数=8), "学工部"(度数=12)]
   → 输出 canonical_id 或 NIL
 ```
 
-> 📖 **延伸阅读**：三阶段管道到底有什么用？它和 apply_to_graph 的区别 → `day2_note_QA.md` **QA-10**
+> 👉 **[QA指路] 三阶段管道到底有什么用？它和 `apply_to_graph` 的区别是什么？请看 `day2_note_QA.md` 的 QA-10**
 
 ---
 
@@ -679,7 +679,7 @@ DETACH DELETE old
 
 > 注意：这里比 4.3 的 `mergeNodes` 更精细——它**检查目标节点是否已有相同类型的关系**，避免创建重复边。
 
-> 📖 **更直观的理解**：冲突检测和合并 5 步的通俗解释及图解例子，请参阅 `day2_note_QA.md` → **QA-9**。
+> 👉 **[QA指路] 更直观的理解：冲突检测和合并 5 步的通俗解释及图解例子，请看 `day2_note_QA.md` 的 QA-9**
 
 ---
 
